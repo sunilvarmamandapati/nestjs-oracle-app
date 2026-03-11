@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    container_name: oracle-db
+    environment:
+      ORACLE_PASSWORD: Oracle_123
+      APP_USER: appuser
+      APP_USER_PASSWORD: AppUser_123
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+      - ./docker/oracle/init.sql:/container-entrypoint-initdb.d/01_init.sql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 180s
+
+  nestjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nestjs-app
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: oracle
+      DB_PORT: 1521
+      DB_SERVICE_NAME: FREEPDB1
+      DB_USERNAME: appuser
+      DB_PASSWORD: AppUser_123
+      DB_POOL_MIN: 2
+      DB_POOL_MAX: 10
+    depends_on:
+      oracle:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  oracle_data:
