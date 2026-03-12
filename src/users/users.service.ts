@@ -1,32 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from './user.entity';
 import { GetUsersQueryDto } from './dto/get-users-query.dto';
 import { PaginatedUsersResponseDto, UserResponseDto } from './dto/user-response.dto';
+import { IUserRepository, USER_REPOSITORY } from './repositories/user.repository.interface';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User)
-    private readonly usersRepository: Repository<User>,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
   ) {}
 
   async findAll(query: GetUsersQueryDto): Promise<PaginatedUsersResponseDto> {
     const { page, limit, username } = query;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (username) {
-      where.username = ILike(`%${username}%`);
-    }
-
-    const [users, total] = await this.usersRepository.findAndCount({
-      where,
-      skip,
-      take: limit,
-      order: { id: 'ASC' },
-    });
+    const [users, total] = await this.userRepository.findAll({ username, skip, take: limit });
 
     return {
       data: users.map((u) => this.toResponseDto(u)),
@@ -38,7 +27,7 @@ export class UsersService {
   }
 
   async findOne(id: number): Promise<UserResponseDto> {
-    const user = await this.usersRepository.findOne({ where: { id } });
+    const user = await this.userRepository.findById(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
@@ -46,7 +35,7 @@ export class UsersService {
   }
 
   async findByUsername(username: string): Promise<UserResponseDto> {
-    const user = await this.usersRepository.findOne({ where: { username } });
+    const user = await this.userRepository.findByUsername(username);
     if (!user) {
       throw new NotFoundException(`User with username '${username}' not found`);
     }

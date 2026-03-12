@@ -1,10 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
-import { ILike, Repository } from 'typeorm';
 import { UsersService } from '../users.service';
 import { User } from '../user.entity';
 import { GetUsersQueryDto } from '../dto/get-users-query.dto';
+import { IUserRepository, USER_REPOSITORY } from '../repositories/user.repository.interface';
 
 const mockUser: User = {
   id: 1,
@@ -30,26 +29,24 @@ const mockUser2: User = {
 
 describe('UsersService', () => {
   let service: UsersService;
-  let repository: jest.Mocked<Repository<User>>;
+  let userRepository: jest.Mocked<IUserRepository>;
 
   beforeEach(async () => {
-    const mockRepository = {
-      findAndCount: jest.fn(),
-      findOne: jest.fn(),
+    const mockUserRepository: jest.Mocked<IUserRepository> = {
+      findAll: jest.fn(),
+      findById: jest.fn(),
+      findByUsername: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
-        {
-          provide: getRepositoryToken(User),
-          useValue: mockRepository,
-        },
+        { provide: USER_REPOSITORY, useValue: mockUserRepository },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    repository = module.get(getRepositoryToken(User));
+    userRepository = module.get(USER_REPOSITORY);
   });
 
   afterEach(() => {
@@ -58,7 +55,7 @@ describe('UsersService', () => {
 
   describe('findAll', () => {
     it('should return paginated users with defaults', async () => {
-      repository.findAndCount.mockResolvedValue([[mockUser, mockUser2], 2]);
+      userRepository.findAll.mockResolvedValue([[mockUser, mockUser2], 2]);
 
       const query: GetUsersQueryDto = { page: 1, limit: 10 };
       const result = await service.findAll(query);
@@ -68,43 +65,32 @@ describe('UsersService', () => {
       expect(result.page).toBe(1);
       expect(result.limit).toBe(10);
       expect(result.totalPages).toBe(1);
-      expect(repository.findAndCount).toHaveBeenCalledWith({
-        where: {},
-        skip: 0,
-        take: 10,
-        order: { id: 'ASC' },
-      });
+      expect(userRepository.findAll).toHaveBeenCalledWith({ username: undefined, skip: 0, take: 10 });
     });
 
-    it('should apply username filter using ILike', async () => {
-      repository.findAndCount.mockResolvedValue([[mockUser], 1]);
+    it('should pass username filter to repository', async () => {
+      userRepository.findAll.mockResolvedValue([[mockUser], 1]);
 
       const query: GetUsersQueryDto = { page: 1, limit: 10, username: 'jdoe' };
       const result = await service.findAll(query);
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].username).toBe('jdoe');
-      expect(repository.findAndCount).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { username: ILike('%jdoe%') },
-        }),
-      );
+      expect(userRepository.findAll).toHaveBeenCalledWith({ username: 'jdoe', skip: 0, take: 10 });
     });
 
     it('should calculate correct skip offset for page 2', async () => {
-      repository.findAndCount.mockResolvedValue([[mockUser], 11]);
+      userRepository.findAll.mockResolvedValue([[mockUser], 11]);
 
       const query: GetUsersQueryDto = { page: 2, limit: 10 };
       const result = await service.findAll(query);
 
       expect(result.totalPages).toBe(2);
-      expect(repository.findAndCount).toHaveBeenCalledWith(
-        expect.objectContaining({ skip: 10, take: 10 }),
-      );
+      expect(userRepository.findAll).toHaveBeenCalledWith({ username: undefined, skip: 10, take: 10 });
     });
 
     it('should return empty list when no users found', async () => {
-      repository.findAndCount.mockResolvedValue([[], 0]);
+      userRepository.findAll.mockResolvedValue([[], 0]);
 
       const result = await service.findAll({ page: 1, limit: 10 });
 
@@ -114,7 +100,7 @@ describe('UsersService', () => {
     });
 
     it('should map entity fields to response DTO correctly', async () => {
-      repository.findAndCount.mockResolvedValue([[mockUser], 1]);
+      userRepository.findAll.mockResolvedValue([[mockUser], 1]);
 
       const result = await service.findAll({ page: 1, limit: 10 });
       const dto = result.data[0];
@@ -132,43 +118,37 @@ describe('UsersService', () => {
 
   describe('findOne', () => {
     it('should return a user when found', async () => {
-      repository.findOne.mockResolvedValue(mockUser);
+      userRepository.findById.mockResolvedValue(mockUser);
 
       const result = await service.findOne(1);
 
       expect(result.id).toBe(1);
       expect(result.username).toBe('jdoe');
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(userRepository.findById).toHaveBeenCalledWith(1);
     });
 
     it('should throw NotFoundException when user does not exist', async () => {
-      repository.findOne.mockResolvedValue(null);
+      userRepository.findById.mockResolvedValue(null);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
-      await expect(service.findOne(999)).rejects.toThrow(
-        'User with ID 999 not found',
-      );
+      await expect(service.findOne(999)).rejects.toThrow('User with ID 999 not found');
     });
   });
 
   describe('findByUsername', () => {
     it('should return a user when found by username', async () => {
-      repository.findOne.mockResolvedValue(mockUser);
+      userRepository.findByUsername.mockResolvedValue(mockUser);
 
       const result = await service.findByUsername('jdoe');
 
       expect(result.username).toBe('jdoe');
-      expect(repository.findOne).toHaveBeenCalledWith({
-        where: { username: 'jdoe' },
-      });
+      expect(userRepository.findByUsername).toHaveBeenCalledWith('jdoe');
     });
 
     it('should throw NotFoundException when username does not exist', async () => {
-      repository.findOne.mockResolvedValue(null);
+      userRepository.findByUsername.mockResolvedValue(null);
 
-      await expect(service.findByUsername('ghost')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findByUsername('ghost')).rejects.toThrow(NotFoundException);
       await expect(service.findByUsername('ghost')).rejects.toThrow(
         "User with username 'ghost' not found",
       );
