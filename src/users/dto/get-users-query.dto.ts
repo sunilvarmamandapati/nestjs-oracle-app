@@ -18,8 +18,8 @@ export class GetUsersQueryDto {
   @Max(100)
   limit?: number = 10;
 
-  @ApiPropertyOptional({ description: 'Filter by username (partial match)' })
+  @ApiPropertyOptional({ description: 'Filter by name (partial match)' })
   @IsOptional()
   @IsString()
-  username?: string;
+  name?: string;
 }

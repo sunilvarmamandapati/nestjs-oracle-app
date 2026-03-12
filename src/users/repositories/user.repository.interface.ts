@@ -3,7 +3,7 @@ import { User } from '../user.entity';
 export const USER_REPOSITORY = 'USER_REPOSITORY';
 
 export interface FindAllOptions {
-  username?: string;
+  name?: string;
   skip: number;
   take: number;
 }

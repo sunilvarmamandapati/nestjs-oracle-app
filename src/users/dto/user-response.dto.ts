@@ -6,29 +6,21 @@ export class UserResponseDto {
   @Expose()
   id: number;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @Expose()
-  username: string;
+  name: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @Expose()
   email: string;
 
   @ApiProperty({ required: false })
   @Expose()
-  firstName: string;
-
-  @ApiProperty({ required: false })
-  @Expose()
-  lastName: string;
-
-  @ApiProperty()
-  @Expose()
-  isActive: number;
-
-  @ApiProperty({ required: false })
-  @Expose()
   createdAt: Date;
+
+  @ApiProperty({ required: false })
+  @Expose()
+  updatedAt: Date;
 }
 
 export class PaginatedUsersResponseDto {

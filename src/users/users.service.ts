@@ -12,10 +12,10 @@ export class UsersService {
   ) {}
 
   async findAll(query: GetUsersQueryDto): Promise<PaginatedUsersResponseDto> {
-    const { page, limit, username } = query;
+    const { page, limit, name } = query;
     const skip = (page - 1) * limit;
 
-    const [users, total] = await this.userRepository.findAll({ username, skip, take: limit });
+    const [users, total] = await this.userRepository.findAll({ name, skip, take: limit });
 
     return {
       data: users.map((u) => this.toResponseDto(u)),
@@ -45,12 +45,10 @@ export class UsersService {
   private toResponseDto(user: User): UserResponseDto {
     const dto = new UserResponseDto();
     dto.id = user.id;
-    dto.username = user.username;
+    dto.name = user.name;
     dto.email = user.email;
-    dto.firstName = user.firstName;
-    dto.lastName = user.lastName;
-    dto.isActive = user.isActive;
     dto.createdAt = user.createdAt;
+    dto.updatedAt = user.updatedAt;
     return dto;
   }
 }

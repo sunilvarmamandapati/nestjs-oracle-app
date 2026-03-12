@@ -11,10 +11,10 @@ export class UserRepository implements IUserRepository {
     private readonly repo: Repository<User>,
   ) {}
 
-  async findAll({ username, skip, take }: FindAllOptions): Promise<[User[], number]> {
+  async findAll({ name, skip, take }: FindAllOptions): Promise<[User[], number]> {
     const where: Record<string, unknown> = {};
-    if (username) {
-      where.username = ILike(`%${username}%`);
+    if (name) {
+      where.name = ILike(`%${name}%`);
     }
     return this.repo.findAndCount({ where, skip, take, order: { id: 'ASC' } });
   }
@@ -24,6 +24,6 @@ export class UserRepository implements IUserRepository {
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    return this.repo.findOne({ where: { username } });
+    return this.repo.findOne({ where: { name: username } });
   }
 }
